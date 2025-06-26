@@ -1,4 +1,4 @@
 # AnalyticsSQL
 SQLforLooker - запит для отримання даних, які допоможуть аналізувати динаміку створення акаунтів, активність користувачів за листами (відправлення, відкриття, переходи), а також оцінювати поведінку в категоріях, таких як інтервал відправлення, верифікація акаунтів і статус підписки. Дані дозволять порівнювати активність між країнами, визначати ключові ринки, сегментувати користувачів за різними параметрами.
 
-[![Dashboard Preview](images/looker_preview.png)](https://lookerstudio.google.com/reporting/2d82c37a-e5ac-42b5-a54b-efe283edb6b6)
+[![Dashboard Preview](images/Preview.png)](https://lookerstudio.google.com/reporting/2d82c37a-e5ac-42b5-a54b-efe283edb6b6)
