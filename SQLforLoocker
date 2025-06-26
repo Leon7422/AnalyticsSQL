@@ -1,0 +1,139 @@
+--table with all informtain about accounts
+with account_info_table_full as (
+  SELECT
+   date,
+    sp.country as country,
+   send_interval,
+   is_verified,
+   is_unsubscribed,
+   COUNT(account_id) as cnt_of_created_acc,
+  FROM `DA.account` a
+  JOIN `DA.account_session` acs
+  ON a.id = acs.account_id
+  JOIN `DA.session` s
+  ON acs.ga_session_id = s.ga_session_id
+  JOIN `DA.session_params` sp
+  ON s.ga_session_id = sp.ga_session_id
+   GROUP BY date,
+    country,
+   send_interval,
+   is_verified,
+   is_unsubscribed
+),
+
+
+
+
+--table with all information about messages
+messages_info_table as (
+  select
+    date_add(s.date, INTERVAL es.sent_date DAY) as sent_date,
+    country,
+    send_interval as send_interval,
+    is_verified as is_verified,
+    is_unsubscribed as is_unsubscribed,
+   COUNT(es.id_message) as cnt_msg_sent,
+   COUNT(eo.id_message) as cnt_msg_open,
+   COUNT(ev.id_message) as cnt_msg_visit,
+  from `DA.email_sent` es
+  join `DA.account` a
+  on a.id = es.id_account
+  JOIN `DA.account_session` acs
+  ON a.id = acs.account_id
+  JOIN `DA.session` s
+  ON acs.ga_session_id = s.ga_session_id
+  JOIN `DA.session_params` sp
+  ON s.ga_session_id = sp.ga_session_id
+  left join `DA.email_open` eo
+  on es.id_message = eo.id_message
+  left join `DA.email_visit` ev
+  on ev.id_account = eo.id_account
+  GROUP BY sent_date,
+    country,
+    send_interval,
+    is_verified,
+    is_unsubscribed
+),
+
+
+
+
+--united accounts and message without grouping
+united_accounts_and_message_tables as (
+  select
+  date,
+  country,
+  send_interval,
+  is_verified,
+  is_unsubscribed,
+  cnt_of_created_acc as account_cnt,
+  0 as sent_msg,
+  0 as open_msg,
+  0 as visit_msg,
+  from account_info_table_full
+  group by date,
+  country,
+  send_interval,
+  is_verified,
+  is_unsubscribed,
+  account_cnt
+  UNION ALL
+  select
+  sent_date as date,
+  country,
+  send_interval,
+  is_verified,
+  is_unsubscribed,
+  0 as account_cnt,
+  cnt_msg_sent as sent_msg,
+  cnt_msg_open as open_msg,
+  cnt_msg_visit as visit_msg,
+  from messages_info_table
+),
+
+
+
+
+--united and grouped accounts and message tables
+united_and_grouped_table as (
+  select
+  date,
+  country,
+  send_interval,
+  is_verified,
+  is_unsubscribed,
+  SUM(account_cnt) as account_cnt,
+  sum(sent_msg) as sent_msg,
+  sum(open_msg) as open_msg,
+  sum(visit_msg) as visit_msg
+  from united_accounts_and_message_tables
+  GROUP BY date,
+  country,
+  send_interval,
+  is_verified,
+  is_unsubscribed
+),
+
+
+
+
+--table with all final data including 2 additional rank metrics and 2 sum metrics by country
+table_with_all_final_data as(
+  select *,
+  dense_rank() over(order by total_country_account_cnt desc) as rank_total_country_account_cnt,
+  dense_rank() over(order by total_country_sent_cnt desc) as rank_total_country_sent_cnt
+    from (
+     select
+      *,
+      SUM(account_cnt) over(partition by country) as total_country_account_cnt,
+      SUM(sent_msg) over(partition by country) as total_country_sent_cnt,
+      from united_and_grouped_table
+    )
+)
+
+
+
+
+select *
+from table_with_all_final_data
+WHERE rank_total_country_account_cnt <= 10 OR rank_total_country_sent_cnt <= 10
